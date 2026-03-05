@@ -16,21 +16,24 @@ These components form the basis of ZK arithmetic logic, where conditional branch
 ---
 
 ## 🌲 2. Privacy & State Management: Merkle Inclusion Proofs
-The Merkle Tree Verifier is a cornerstone of privacy-preserving protocols (e.g., anonymous transfers, ZK-Rollups). It allows a Prover to demonstrate that a specific secret data point (leaf) exists within a public commitment (the Root) without revealing the leaf's value or its position.
+Implementation of recursive hashing structures used in ZK-Rollups and privacy protocols (e.g., Tornado Cash).
 
-### Technical Implementation
-- **Hashing**: Utilizes the **Poseidon Hash**, a ZK-friendly unkeyed permutation. Unlike SHA-256, Poseidon is optimized for R1CS, leveraging MDS matrices and $x^5$ S-boxes to minimize the constraint count in the prime field $\mathbb{F}_p$.
-- **Recursive Logic**: The circuit reconstructs the Merkle Path by hashing the current node with its sibling at each level $i \in \{0, \dots, height-1\}$.
-- **Algebraic Selector**: Since R1CS lacks native conditional branching, the left/right node order is enforced via a linear multiplexer: 
-  $L = a + s(b - a)$  
-  $R = b + s(a - b)$  
-  where $s \in \{0, 1\}$ is the path index.
+- **Technical Detail**: The circuit reconstructs the Merkle Path by hashing nodes using the **Poseidon Hash**. It leverages an algebraic selector $L = a + s(b - a)$ to enforce the correct order of sibling nodes without conditional branching.
+- **Security Audit**: Focuses on **Path Index Constraints**. My implementation enforces $s(1-s) = 0$ to prevent "bit-smuggling" attacks where a malicious prover could use non-binary index values to manipulate the computed root.
 
-### Security & Audit Considerations
-- **Path Index Constraint**: A critical vulnerability in Merkle circuits is the lack of binary constraints on `path_indices`. My implementation enforces $s(1-s) = 0$ for every step. Without this, a malicious prover could inject non-binary values to manipulate the hash computation and forge inclusion proofs.
-- **Algebraic Integrity**: By using Poseidon, we ensure that the proof generation remains computationally efficient while maintaining a security level of ~128 bits against differential and algebraic attacks (e.g., Gröbner basis attacks).
+---
+
+## 🛡️ 3. Security Deep Dives & Vulnerability Analysis
+Beyond simple implementation, I document critical algebraic vulnerabilities that affect modern ZK protocols.
+
+- **`AliasAttack_Notes.md` (Field Overflow)**: An analysis of the discrepancy between Finite Field arithmetic ($\mathbb{F}_p$) and external system representations (e.g., Ethereum's `uint256`). This documents how the lack of uniqueness in the solution space ($X \equiv X + p$) can lead to **Double Spending** or **Identity Forgery**.
+- **`Poseidon_Security_Notes.md` (Symmetry Breaking)**: A deep dive into the algebraic security of ZK-friendly hashes.
+  - **Round Constants**: Analyzing the importance of **Nothing-Up-My-Sleeve (NUMS)** constants to break algebraic symmetries and prevent **Invariant Subspace Attacks**.
+  - **MDS Matrices**: Examining optimal diffusion through Maximum Distance Separable matrices to ensure that every input change propagates through the entire state.
 
 ---
 
 ## 🔬 Methodology & Philosophy
-Every circuit in this repository is audited with a focus on **formal soundness**. My goal is to ensure that the R1CS constraints define a unique and intended solution space, leaving zero degrees of freedom for a malicious prover to generate forged proofs. In the world of Zero-Knowledge, **if a signal is not explicitly constrained, it is a vulnerability.**
+Every circuit in this repository is audited with a focus on **formal soundness**. My goal is to ensure that the R1CS constraints define a unique and intended solution space, leaving zero degrees of freedom for a malicious prover to generate forged proofs. 
+
+In the world of Zero-Knowledge, **if a signal is not explicitly constrained, it is a vulnerability.**
